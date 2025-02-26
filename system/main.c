@@ -7,11 +7,11 @@ uint32_t last_interrupt_time_JOYSTICK = 0;
 
 // --- Variáveis usada para mudança de funcionamento do sistema ---
 volatile bool access_control_mode = false;
-volatile bool keypad_test_mode = false;
 bool keypad_fault = false;
 bool buzzer_fault = false;
 volatile bool action_executed = false;
 bool bloq_system = false;
+
 
 // Para a matriz de LEDs
 PIO pio = pio0;
@@ -28,9 +28,6 @@ int code_index = 0;
 
 void lock_system(void) {
     bloq_system = true;
-    display_message("SISTEMA", "BLOQUEADO", "");
-    printf("\nSistema bloqueado. Reinicie para desbloquear.\n");
-    // Outras ações podem ser adicionadas aqui
 }
 
 /**
@@ -126,40 +123,38 @@ uint16_t microphone_read(void) {
     return adc_read();
 }
 
-bool verify_access(void) {
-    busy_wait_ms(500);
-    return true;
-}
 
 /**
  * @brief faz a detecção para confirmar o reconhecimento de voz
  */
 void microphone_access(void) {
     display_message("RECONHECIMENTO", "DE", "VOZ");
+    printf("Iniciando Reconhecimento de voz!\n");
+    busy_wait_ms(1000);
     uint16_t adc_value = microphone_read();
     if (adc_value > SOUND_THRESHOLD) {
         printf("Som detectado. Iniciando verificação de acesso...\n");
         gpio_put(LED_RED, 1);
         busy_wait_ms(500);
         gpio_put(LED_RED, 0);
-        busy_wait_ms(500);
+        busy_wait_ms(1000);
 
-        if (verify_access()) {
+        if ((gpio_get(JOYSTICK_BTN) == 0)) { //usa do botão do joystick para simular voz não reconhecida
+            printf("Acesso negado!\n");
+            display_message("VOZ", "NAO", "RECONHECIDA");
+            gpio_put(LED_RED, 1);
+            busy_wait_ms(1000);
+            gpio_put(LED_RED, 0);
+            busy_wait_ms(1000);
+
+        } else {
             printf("Acesso concedido!\n");
             display_message("VOZ", "RECONHECIDA", "");
             play_success(BUZZER1_PIN);
             gpio_put(LED_GREEN, 1);
             busy_wait_ms(1000);
             gpio_put(LED_GREEN, 0);
-        } else {
-            printf("Acesso negado!\n");
-            for (int i = 0; i < 5; i++) {
-                display_message("VOZ", "NAO", "RECONHECIDA");
-                gpio_put(LED_RED, 1);
-                busy_wait_ms(500);
-                gpio_put(LED_RED, 0);
-                busy_wait_ms(500);
-            }
+            busy_wait_ms(1000);
         }
     }
 }
@@ -214,13 +209,13 @@ void process_access_control(void) {
             busy_wait_ms(2000);
             printf("\nVerificação de iris!\n");
             iris_scan(pio, sm, BUTTON_B);
-            busy_wait_ms(1000);
+            busy_wait_ms(2000);
         } else {
             printf("\nCódigo Incorreto!\n");
             play_error(BUZZER2_PIN);
             display_message("CODIGO", "INCORRETO", "");
             gpio_put(LED_RED, 1);
-            busy_wait_ms(1000);
+            busy_wait_ms(2000);
         }
         gpio_put(LED_RED, 0);
         // Reinicia a entrada para nova tentativa
@@ -240,38 +235,17 @@ void access_control(void) {
     busy_wait_ms(2000);
 }
 
-/*======================*/
-/* Funções de Exibição  */
-/*======================*/
-
-/**
- * @brief Exibe caractere numérico na matriz LED
- * @param c_uart Caractere a ser exibido
- * @param pio Instância PIO para controle da matriz
- * @param sm State machine da matriz LED
- */
-void display_num(char c_uart) {
-    ssd1306_fill(&ssd, false);
-    if (c_uart != '\0') {
-        ssd1306_fill(&ssd, 0);
-        ssd1306_send_data(&ssd);
-        char str[2] = {c_uart, '\0'};
-        ssd1306_draw_string(&ssd, "NUMERO ", 0, 30);
-        ssd1306_draw_string(&ssd, str, 80, 30);
-        ssd1306_send_data(&ssd);
-    }
-    busy_wait_ms(1500);
-}
 
 /*================================*/
 /* Funções de Teste e Diagnóstico */
 /*================================*/
 
 /**
- * @brief Executa teste completo dos buzzers
- * @note Testa ambos os buzzers com sequências de tons
+ * @brief Inicia modo de teste do sistema
  */
+
 void buzzer_test(void) {
+    gpio_put(LED_RED, 1);
     printf("\nIniciando teste dos buzzers...\n");
     display_message("TESTANDO", "BUZZERS", "");
 
@@ -292,61 +266,34 @@ void buzzer_test(void) {
     }
 }
 
-/**
- * @brief Inicia modo de teste do sistema
- */
-
-void test_keypad(void) {
-    // Ativa o modo de teste do teclado
-    keypad_test_mode = true;
-    }
-    
 void process_keypad_test(void) {
     // Exibe a mensagem de teste apenas uma vez
+    gpio_put(LED_BLUE, 1);
+    printf("\nIniciando teste do teclado...\n");
+    display_message("TESTANDO", "TECLADO", "");
+    busy_wait_ms(2000);
 
-    static bool msg_exibida = false;
-    if (!msg_exibida) {
-            display_message("TESTANDO", "TECLADO", "");
-            gpio_put(LED_BLUE, 1);
-            msg_exibida = true;
-            busy_wait_ms(1000);
-        }
-        // Tenta ler e exibir imediatamente da USB
-        int c_usb = getchar_timeout_us(0);
-        if (c_usb != PICO_ERROR_TIMEOUT && c_usb >= '0' && c_usb <= '9') {
-            display_num((char)c_usb);
-        }
-        
-        // Tenta ler e exibir imediatamente da UART
-        if (uart_is_readable(UART_ID)) {
-            char c_uart = uart_getc(UART_ID);
-            display_num(c_uart);
-        }
-        
-        // Se o botão B for pressionado, encerra o teste
-        if (gpio_get(BUTTON_B) == 0) {
-            printf("Teste encerrado pelo botão B.\n");
-            display_message("TESTE", "ENCERRADO", "");
-            msg_exibida = false;
-            keypad_test_mode = false;
-            
-        }
-        // Se o botão do joystick for pressionado, simula falha
-        if (gpio_get(JOYSTICK_BTN) == 0) {
-            keypad_fault = true;
-            keypad_test_mode = false;
-            msg_exibida = false;
-            
-        }
-        gpio_put(LED_BLUE, 0); 
+    // Se o botão B for pressionado, encerra o teste
+    if (gpio_get(BUTTON_B) == 0) {
+        printf("Teste encerrado pelo botão B.\n");
+        display_message("TESTE", "ENCERRADO", "");
+        return;
+    }
+    // Se o botão do joystick for pressionado, simula falha
+    if (gpio_get(JOYSTICK_BTN) == 0) {
+        keypad_fault = true;
+    }
+    busy_wait_ms(3000);
 }
 
 void test_microfone(void) {
+    gpio_put(LED_GREEN, 1); 
     printf("\nIniciando teste do microfone...\n");
     display_message("TESTANDO", "MICROFONE", "");
+    busy_wait_ms(3000);
     
-    // Realiza 10 leituras com intervalo de 500ms entre elas
-    for (int i = 0; i < 10; i++) {
+    // Realiza 5 leituras com intervalo de 500ms entre elas
+    for (int i = 0; i < 5; i++) {
         uint16_t mic_val = microphone_read();
         printf("Valor ADC do microfone: %d\n", mic_val);
         
@@ -363,6 +310,9 @@ void test_microfone(void) {
     
     display_message("TESTE DO", "MICROFONE", "FINALIZADO");
     busy_wait_ms(1000);
+    gpio_put(LED_BLUE, 0);
+    gpio_put(LED_RED, 0);
+    gpio_put(LED_GREEN, 0); 
 }
 
 void system_fault(void) {  
@@ -384,6 +334,7 @@ void system_fault(void) {
         while (1) {
             gpio_put(LED_RED, 1);
             busy_wait_ms(1000);
+            gpio_put(LED_RED, 0);
         }
     }
     display_message("SISTEMA", "", "OK");
@@ -459,12 +410,15 @@ void execute_menu_action(uint8_t menu_index) {
             buzzer_test();
             test_microfone();
             iris_scan_test(pio, sm, JOYSTICK_BTN);
+            draw_menu();
             break;
         case 1:
             access_control();
+            draw_menu();
             break;
         case 2:
             lock_system();
+            draw_menu();
             break;
         case 3:
             system_fault();
@@ -505,29 +459,62 @@ int main(void) {
     // Loop principal: se não estivermos no modo de entrada de senha, atualiza o menu;
     // caso contrário, processa a entrada da senha (leitura via UART/USB)
 // Loop principal
-while (true) {
-    if (bloq_system) {
-        display_message("SISTEMA", "TRAVADO", "REINICIE");
-        gpio_put(LED_RED, 1);
-        busy_wait_ms(500);
-        gpio_put(LED_RED, 0);
-        continue;
-    }
-    if (keypad_test_mode) {
-        process_keypad_test();
-    }
-    else if (access_control_mode) {
-        process_access_control();
-    } 
-    else {
-        draw_menu();
+    draw_menu();
+
+    while (true) {
         int dir = joystick_get_direction();
         update_menu_selection(dir);
+        char unlock_code[5];  // Buffer para armazenar o código recebido (4 caracteres + null terminator)
+        int code_index = 0;   // Índice para controle da digitação do código
+        
+        if (bloq_system) {
+            display_message("SISTEMA", "", "TRAVADO");
+            printf("Sistema travado pelo usuário.\n");
+            gpio_put(LED_RED, 1);
+            busy_wait_ms(500);
+        
+            code_index = 0;
+            memset(unlock_code, 0, sizeof(unlock_code)); // Zera o buffer antes da leitura
+        
+            while (code_index < 4) {  // Continua lendo até completar 4 dígitos
+                // Tenta ler da USB
+                int c_usb = getchar_timeout_us(0);
+                if (c_usb != PICO_ERROR_TIMEOUT && c_usb >= '0' && c_usb <= '9') {
+                    unlock_code[code_index++] = (char)c_usb;
+                    printf("*"); // Exibe um '*' para cada dígito
+                }
+        
+                // Tenta ler da UART
+                if (uart_is_readable(UART_ID)) {
+                    char c = uart_getc(UART_ID);
+                    if (c >= '0' && c <= '9') {
+                        unlock_code[code_index++] = c;
+                        uart_putc(UART_ID, '*'); // Exibe '*' na UART
+                    }
+                }
+            }
+        
+            unlock_code[4] = '\0'; // Garante que a string termine corretamente
+        
+            // Verifica se o código digitado é "0000"
+            if (strcmp(unlock_code, "0000") == 0) {
+                gpio_put(LED_RED, 0);
+                bloq_system = false;
+                display_message("SISTEMA", "", "DESTRAVADO");
+                printf("Sistema destravado.\n");
+                gpio_put(LED_GREEN, 1);
+                busy_wait_ms(1000);
+                gpio_put(LED_GREEN, 0);
+            }
+            draw_menu();
+        }
+        if (access_control_mode) {
+            process_access_control();
+            draw_menu();
+        }
         draw_menu();
+        busy_wait_ms(75);
     }
-    
-    busy_wait_ms(200);
-}
 
 return 0;
 }

@@ -29,12 +29,12 @@
 #define BUZZER1_PIN 10
 #define BUZZER2_PIN 21
 #define UART_ID uart0
-#define BAUD_RATE 115200
+#define BAUD_RATE 250000
 
 // --- Outras definições ---
 #define ADC_CENTER     2048
 #define ADC_THRESHOLD  512   // Limiar para detectar movimento do joystick
-#define SOUND_THRESHOLD 1900  // Limiar para detecção de som
+#define SOUND_THRESHOLD 1925  // Limiar para detecção de som
 
 #define JOYSTICK_ADC_X 26    // ADC canal 0: eixo X
 #define JOYSTICK_ADC_Y 27    // ADC canal 1: eixo Y

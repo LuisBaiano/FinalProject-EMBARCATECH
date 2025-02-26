@@ -26,7 +26,7 @@ void draw_menu(void) {
     ssd1306_rect(&ssd, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT, 1, 0);
     
     // Exibe um título (ajuste a posição conforme necessário)
-    ssd1306_draw_string(&ssd, "ALFA SEGURANCA", 10, 10);
+    ssd1306_draw_string(&ssd, "ALPHA SEGURANCA", 5, 10);
     
     // Desenha cada item do menu
     for (uint8_t i = 0; i < MENU_COUNT; i++) {

@@ -100,7 +100,7 @@ void iris_scan(PIO pio, uint sm, uint button_b) {
             pio_sm_put_blocking(pio, sm, color);
         }
         printf("Acesso negado!\n");
-        display_message("IRIS", "NÃO", "RECONHECIDA");
+        display_message("IRIS", "NAO", "RECONHECIDA");
         busy_wait_ms(2000);
     } else {
         // Exibe o frame em verde indicando acesso concedido
