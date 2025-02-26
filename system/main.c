@@ -5,19 +5,20 @@ uint32_t last_interrupt_time_A = 0;
 uint32_t last_interrupt_time_B = 0;
 uint32_t last_interrupt_time_JOYSTICK = 0;
 
+// --- Variáveis usada para mudança de funcionamento do sistema ---
+volatile bool access_control_mode = false;
 volatile bool keypad_test_mode = false;
 bool keypad_fault = false;
-bool buzzer_fault = false; // Falha no buzzer
+bool buzzer_fault = false;
 volatile bool action_executed = false;
+bool bloq_system = false;
 
 // Para a matriz de LEDs
 PIO pio = pio0;
 uint sm = 0;
 
-bool bloq_system = false;
 
 // Variáveis para controle de acesso
-volatile bool access_control_mode = false;
 char entered_code[CODE_LENGTH + 1] = {0};
 int code_index = 0;
 
@@ -249,7 +250,7 @@ void access_control(void) {
  * @param pio Instância PIO para controle da matriz
  * @param sm State machine da matriz LED
  */
-void display_num(char c_uart, PIO pio, uint sm) {
+void display_num(char c_uart) {
     ssd1306_fill(&ssd, false);
     if (c_uart != '\0') {
         ssd1306_fill(&ssd, 0);
@@ -292,9 +293,9 @@ void buzzer_test(void) {
 }
 
 /**
- * @brief Inicia modo de teste do teclado matricial
- * @note Exibe números digitados na matriz LED
+ * @brief Inicia modo de teste do sistema
  */
+
 void test_keypad(void) {
     // Ativa o modo de teste do teclado
     keypad_test_mode = true;
@@ -313,13 +314,13 @@ void process_keypad_test(void) {
         // Tenta ler e exibir imediatamente da USB
         int c_usb = getchar_timeout_us(0);
         if (c_usb != PICO_ERROR_TIMEOUT && c_usb >= '0' && c_usb <= '9') {
-            display_num((char)c_usb, pio, sm);
+            display_num((char)c_usb);
         }
         
         // Tenta ler e exibir imediatamente da UART
         if (uart_is_readable(UART_ID)) {
             char c_uart = uart_getc(UART_ID);
-            display_num(c_uart, pio, sm);
+            display_num(c_uart);
         }
         
         // Se o botão B for pressionado, encerra o teste
@@ -439,12 +440,10 @@ void gpio_callback(uint gpio, uint32_t events) {
     }
     if (gpio == BUTTON_B) {
         if (check_debounce(&last_interrupt_time_B, DEBOUNCE_TIME)) {
-            // Ação para BUTTON_B, se necessário.
         }
     }
     if (gpio == JOYSTICK_BTN) {
         if (check_debounce(&last_interrupt_time_JOYSTICK, DEBOUNCE_TIME)) {
-            // Ação para o botão do joystick, se necessário.
         }
     }
 }
