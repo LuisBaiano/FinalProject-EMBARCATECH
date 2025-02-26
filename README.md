@@ -30,10 +30,15 @@ O sistema de controle de acesso foi desenvolvido para garantir segurança em amb
 ## Funcionalidades
 
 ✅ **Entrada de senha:** O usuário pode inserir uma senha utilizando um joystick.
+
 ✅ **Reconhecimento de voz:** Capacidade de autenticação através do microfone embutido.
+
 ✅ **Feedback visual e sonoro:** LEDs RGB e buzzer indicam o status do acesso.
+
 ✅ **Scanner de íris (planejado):** Uma camada extra de segurança será adicionada futuramente.
+
 ✅ **Testes e diagnósticos:** O sistema pode verificar o funcionamento dos componentes eletrônicos.
+
 ✅ **Modo de treinamento de voz:** Padrões de voz podem ser gravados e validados para futuras autenticações.
 
 ## Componentes Utilizados
